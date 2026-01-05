@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanskrit OCR - Extract Text from Sanskrit Documents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #1a202c;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 300;
+        }
+
+        .upload-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        }
+
+        .upload-zone:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .file-list {
+            margin-top: 2rem;
+        }
+
+        .file-item {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .file-remove {
+            background: #fc8181;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .file-remove:hover {
+            background: #f56565;
+            transform: scale(1.05);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading-text {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-hint {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-top: 1rem;
+        }
+
+        .spinner {
+            border: 4px solid rgba(102, 126, 234, 0.2);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            background: linear-gradient(to right, #e0e7ff 0%, #f0f4ff 100%);
+            border-radius: 16px;
+            height: 34px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(102, 126, 234, 0.15);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+            background-size: 200% 100%;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            width: 0%;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            animation: shimmer 3s ease-in-out infinite;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 8px;
+        }
+
+        @keyframes shimmer {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        .progress-bar.indeterminate {
+            width: 100% !important;
+            background: linear-gradient(90deg,
+                    rgba(102, 126, 234, 0.3) 0%,
+                    rgba(118, 75, 162, 0.8) 50%,
+                    rgba(102, 126, 234, 0.3) 100%);
+            background-size: 200% 100%;
+            animation: progress-animate 2s linear infinite;
+        }
+
+        @keyframes progress-animate {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .results {
+            margin-top: 2rem;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-filename {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .result-status {
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-success {
+            background: #9ae6b4;
+            color: #22543d;
+        }
+
+        .status-error {
+            background: #fc8181;
+            color: #742a2a;
+        }
+
+        .result-text {
+            font-family: 'Noto Sans Devanagari', sans-serif;
+            font-size: 1.4rem;
+            line-height: 2.2;
+            color: #1a202c;
+            background: #ffffff;
+            padding: 1.5rem;
+            border-radius: 12px;
+            min-height: 100px;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid #e2e8f0;
+        }
+
+        .result-error {
+            color: #e53e3e;
+            font-weight: 500;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .upload-card {
+                padding: 1.5rem;
+            }
+
+            .upload-zone {
+                padding: 2rem 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🕉️ Sanskrit OCR</h1>
+            <p class="subtitle">Extract Sanskrit text from PDFs and images using Tesseract</p>
+        </header>
+
+        <!-- PDF Splitter Section -->
+        <div class="upload-card">
+            <h2 style="margin-bottom: 1rem; color: #2d3748;">📄 PDF Splitter</h2>
+            <p style="margin-bottom: 1.5rem; color: #718096;">Split large PDFs into ~500KB chunks for easier processing
+            </p>
+
+            <div class="upload-zone" id="splitDropZone" style="cursor: pointer;">
+                <div class="upload-icon">✂️</div>
+                <div class="upload-text">Drop PDF here to split</div>
+                <div class="upload-hint">Splits into manageable chunks</div>
+                <input type="file" id="splitFileInput" accept=".pdf" style="display: none;">
+            </div>
+
+            <div id="splitLoading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p class="loading-text">Analyzing and splitting PDF...</p>
+            </div>
+
+            <div id="splitResults" style="margin-top: 2rem; display: none;">
+                <h3 style="color: #2d3748; margin-bottom: 1rem;">Split Results</h3>
+                <div style="background: #f7fafc; border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                    <strong>Original:</strong> <span id="originalFilename"></span><br>
+                    <strong>Total Pages:</strong> <span id="totalPages"></span><br>
+                    <strong>Chunks Created:</strong> <span id="chunksCount"></span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #e2e8f0;">
+                                <th style="padding: 0.75rem; text-align: left;">Chunk</th>
+                                <th style="padding: 0.75rem; text-align: left;">Pages</th>
+                                <th style="padding: 0.75rem; text-align: left;">Size</th>
+                                <th style="padding: 0.75rem; text-align: left;">Download</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chunksTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section: OCR Text Extraction -->
+        <div class="section-header">
+            <h2>📄 Extract Text from Documents</h2>
+            <p class="section-description">Upload PDF or image files to extract Sanskrit text using Tesseract OCR</p>
+        </div>
+
+        <!-- OCR Upload Section -->
+        <div class="upload-card">
+            <div class="upload-zone" id="dropZone">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Drag & drop files here</div>
+                <div class="upload-hint">or click to browse (PDF, PNG, JPG, JPEG)</div>
+                <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg">
+            </div>
+
+            <div id="fileList" class="file-list"></div>
+
+            <button class="btn btn-primary" id="uploadBtn" style="display: none;">
+                Upload & Extract Text
+            </button>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p class="loading-text">Initializing...</p>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <p class="loading-hint">💡 Large PDFs may take several minutes. Check the terminal for detailed
+                    progress.</p>
+            </div>
+        </div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+
+        let selectedFiles = [];
+
+        // Click to select files
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) {
+            const newFiles = Array.from(files).filter(file => {
+                const ext = file.name.toLowerCase();
+                return ext.endsWith('.pdf') || ext.endsWith('.png') ||
+                    ext.endsWith('.jpg') || ext.endsWith('.jpeg');
+            });
+
+            selectedFiles = [...selectedFiles, ...newFiles];
+            updateFileList();
+        }
+
+        function updateFileList() {
+            if (selectedFiles.length === 0) {
+                fileList.innerHTML = '';
+                uploadBtn.style.display = 'none';
+                return;
+            }
+
+            fileList.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-item">
+                    <span class="file-name">${file.name}</span>
+                    <button class="file-remove" onclick="removeFile(${index})">Remove</button>
+                </div>
+            `).join('');
+
+            uploadBtn.style.display = 'block';
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) return;
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('file', file);
+            });
+
+            uploadBtn.disabled = true;
+            loading.style.display = 'block';
+            results.innerHTML = '';
+
+            let sessionId = null;
+            let progressInterval = null;
+
+            // Start upload
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(async response => {
+                const data = await response.json();
+                sessionId = data.session_id;
+
+                console.log('Upload response:', data);
+                console.log('Session ID:', sessionId);
+
+                // Start polling for progress immediately
+                progressInterval = setInterval(async () => {
+                    try {
+                        console.log('Polling status for session:', sessionId);
+                        const statusRes = await fetch(`/status/${sessionId}`);
+                        const status = await statusRes.json();
+
+                        console.log('Status update:', status);
+
+                        if (status) {
+                            const progressBar = document.getElementById('progressBar');
+                            const percentage = status.total > 0
+                                ? Math.round((status.current / status.total) * 100)
+                                : 0;
+
+                            // Update progress bar
+                            progressBar.style.width = percentage + '%';
+                            progressBar.textContent = `${percentage}% - ${status.stage}`;
+
+                            console.log(`Progress: ${percentage}%, ${status.current}/${status.total}, ${status.stage}`);
+
+                            const loadingText = document.querySelector('.loading-text');
+                            loadingText.textContent = status.message;
+
+                            if (status.complete) {
+                                clearInterval(progressInterval);
+                                // Display results after a short delay
+                                setTimeout(() => {
+                                    loading.style.display = 'none';
+                                    // Display results from status
+                                    if (status.results && status.results.length > 0) {
+                                        displayResults(status.results);
+                                    }
+                                    uploadBtn.disabled = false;
+
+                                    // Clear file selection
+                                    selectedFiles = [];
+                                    fileInput.value = '';
+                                    updateFileList();
+                                }, 500);
+                            }
+                        } else {
+                            console.log('No status available yet');
+                        }
+                    } catch (err) {
+                        console.error('Progress poll error:', err);
+                    }
+                }, 1000); // Poll every 1 second
+
+            }).catch(error => {
+                loading.style.display = 'none';
+                uploadBtn.disabled = false;
+                alert('Error uploading files: ' + error.message);
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+            });
+        });
+
+        function displayResults(resultsData) {
+            results.innerHTML = resultsData.map(result => {
+
+                // Escape HTML to prevent any rendering issues
+                const escapeHtml = (text) => {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                };
+
+                // Format time display
+                const formatTime = (seconds) => {
+                    if (!seconds) return '';
+                    if (seconds < 60) return `${seconds.toFixed(1)}s`;
+                    const minutes = Math.floor(seconds / 60);
+                    const secs = (seconds % 60).toFixed(0);
+                    return `${minutes}m ${secs}s`;
+                };
+
+                // Build metadata string
+                let metadata = '';
+                if (result.pages_processed && result.total_pages) {
+                    metadata += `📄 ${result.pages_processed}/${result.total_pages} pages`;
+                }
+                if (result.estimated_time_seconds) {
+                    if (metadata) metadata += ' • ';
+                    metadata += ` ${formatTime(result.estimated_time_seconds)}`;
+                }
+
+                const displayText = result.success
+                    ? (result.text ? escapeHtml(result.text) : 'No text detected')
+                    : escapeHtml(result.error || 'Unknown error');
+
+                return `
+                    <div class="result-item">
+                        <div class="result-header">
+                            <div class="result-filename">${escapeHtml(result.filename)}</div>
+                            <div class="result-status ${result.success ? 'status-success' : 'status-error'}">
+                                ${result.success ? '✓ Success' : '✗ Failed'}
+                            </div>
+                        </div>
+                        ${metadata ? `<div style="font-size: 0.9rem; color: #718096; margin-bottom: 0.5rem;">${metadata}</div>` : ''}
+                        <div class="result-text ${result.success ? '' : 'result-error'}">
+                            ${displayText}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== PDF SPLITTER ====================
+        const splitDropZone = document.getElementById('splitDropZone');
+        const splitFileInput = document.getElementById('splitFileInput');
+        const splitLoading = document.getElementById('splitLoading');
+        const splitResults = document.getElementById('splitResults');
+
+        // Click to select PDF
+        splitDropZone.addEventListener('click', () => {
+            splitFileInput.click();
+        });
+
+        // File input change
+        splitFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleSplitFile(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop for splitter
+        splitDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            splitDropZone.classList.add('dragover');
+        });
+
+        splitDropZone.addEventListener('dragleave', () => {
+            splitDropZone.classList.remove('dragover');
+        });
+
+        splitDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            splitDropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleSplitFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        async function handleSplitFile(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                alert('Only PDF files can be split!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            splitDropZone.style.display = 'none';
+            splitLoading.style.display = 'block';
+            splitResults.style.display = 'none';
+
+            try {
+                const response = await fetch('/split', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                splitLoading.style.display = 'none';
+
+                if (data.success) {
+                    document.getElementById('originalFilename').textContent = data.original_filename;
+                    document.getElementById('totalPages').textContent = data.total_pages;
+                    document.getElementById('chunksCount').textContent = data.chunks.length;
+
+                    const chunksTable = document.getElementById('chunksTable');
+                    chunksTable.innerHTML = data.chunks.map((chunk, idx) => `
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 0.75rem;">Chunk ${idx + 1}</td>
+                            <td style="padding: 0.75rem;">${chunk.page_range}</td>
+                            <td style="padding: 0.75rem;">${formatFileSize(chunk.file_size)}</td>
+                            <td style="padding: 0.75rem;">
+                                <a href="${chunk.download_path}" 
+                                   download="${chunk.filename}"
+                                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                          color: white; padding: 0.5rem 1rem; border-radius: 8px; 
+                                          text-decoration: none; display: inline-block; font-weight: 600;">
+                                    ⬇️ Download
+                                </a>
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    splitResults.style.display = 'block';
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to split PDF'));
+                    splitDropZone.style.display = 'block';
+                }
+
+                splitFileInput.value = '';
+            } catch (error) {
+                splitLoading.style.display = 'none';
+                splitDropZone.style.display = 'block';
+                alert('Error splitting PDF: ' + error.message);
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+    </script>
+</body>
+
+</html>

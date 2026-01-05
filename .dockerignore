@@ -1,0 +1,23 @@
+# Sanskrit OCR Docker
+
+# Ignore build artifacts
+target/
+Cargo.lock
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore test files and data
+*.pdf
+assets/
+
+# Ignore local env files
+.env
+.env.local
