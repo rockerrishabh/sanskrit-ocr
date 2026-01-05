@@ -2,7 +2,6 @@
 
 # Ignore build artifacts
 target/
-Cargo.lock
 
 # Ignore git
 .git/
